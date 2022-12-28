@@ -49,8 +49,8 @@ public class TelegramBot extends TelegramLongPollingBot {
         List<BotCommand> listOfCommands = new ArrayList<>();
         listOfCommands.add(new BotCommand("/start", "Вітання/Запуск"));
         listOfCommands.add(new BotCommand("/schedule", "Розклад"));
-        listOfCommands.add(new BotCommand("/weekSchedule", "Розклад на тиждень"));
-        listOfCommands.add(new BotCommand("/examsSchedule", "Розклад екзаменів"));
+        listOfCommands.add(new BotCommand("/week_schedule", "Розклад на тиждень"));
+        listOfCommands.add(new BotCommand("/exams_schedule", "Розклад екзаменів"));
         listOfCommands.add(new BotCommand("/help", "Допомога"));
         try {
             this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
