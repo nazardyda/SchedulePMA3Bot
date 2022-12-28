@@ -1,32 +1,35 @@
 package io.project.SchedulePMABot.service;
 
 import io.project.SchedulePMABot.config.BotConfig;
-import lombok.SneakyThrows;
+import io.project.SchedulePMABot.utils.TextUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import org.springframework.util.ResourceUtils;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.commands.GetMyCommands;
+import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.methods.send.SendPhoto;
-import org.telegram.telegrambots.meta.api.objects.InputFile;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
+import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.text.Format;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
 @Slf4j
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
     private final BotConfig config;
-    static final String ERROR_TEXT = "Error occurred: ";
-    static final String HELP_TEXT =
+    private static final String ERROR_TEXT = "Error occurred: ";
+    private static final String HELP_TEXT =
             """
                     Це бот розкладу
 
@@ -40,12 +43,24 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                     /examsSchedule - підкаже розклад екзаменів
 
-                    /help - допоможе тобі розібратися з командами\s
+                    /help - допоможе тобі розібратися з командами
 
                     """;
 
+
     public TelegramBot(BotConfig config){
         this.config=config;
+        List<BotCommand> listOfCommands = new ArrayList<>();
+        listOfCommands.add(new BotCommand("/start", "Вітання/Запуск"));
+        listOfCommands.add(new BotCommand("/schedule", "Розклад"));
+        listOfCommands.add(new BotCommand("/weekSchedule", "Розклад на тиждень"));
+        listOfCommands.add(new BotCommand("/examsSchedule", "Розклад екзаменів"));
+        listOfCommands.add(new BotCommand("/help", "Допомога"));
+        try {
+            this.execute(new SetMyCommands(listOfCommands, new BotCommandScopeDefault(), null));
+        } catch (TelegramApiException e) {
+            log.error("Error setting bot's command list: " + e.getMessage());
+        }
     }
 
     @Override
@@ -85,98 +100,88 @@ public class TelegramBot extends TelegramLongPollingBot {
     }
 
     private void examsSchedule(long chatId) {
+//        switch (TextUtils.getSimpleDateFormat().toString()){
+//            case "2-12-2022" ->
+//                    sendMessage(chatId,TextUtils.FIRST_EXAM);
+//            case "5-12-2022"->
+//                    sendMessage(chatId,TextUtils.SECOND_EXAM);
+//            case "9-12-2022"->
+//                    sendMessage(chatId,TextUtils.THIRD_EXAM);
+//            case "12-12-2022"->
+//                    sendMessage(chatId,TextUtils.FOURTH_EXAM);
+//            default ->
+//                    sendMessage(chatId,TextUtils.HOLIDAY);
+//        }
+        sendMessage(chatId,TextUtils.EXAM_SCHEDULE);
     }
 
     private void weekSchedule(long chatId) {
-
+        if (!weekOfYear()){
+            sendMessage(chatId,TextUtils.WEEK_ODD);
+        }else{
+            sendMessage(chatId,TextUtils.WEEK_PAIR);
+        }
+    }
+    public static String dayOfWeek(){
+        Format f = new SimpleDateFormat("EEEE");
+        return f.format(new Date());
+    }
+    private void scheduleToday(long chatId) {
+        scheduleSwitch(chatId, dayOfWeek());
     }
 
-    private void scheduleToday(long chatId) {
-        Calendar cal = Calendar.getInstance();
-        SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
-        Format f = new SimpleDateFormat("EEEE");
-        String dayOfWeek = f.format(new Date());
+    public static String parity(){
         String parity;
         if(weekOfYear()){
             parity = "Парний";
         }else{
             parity = "Не парний";
         }
-        scheduleSwitch(chatId, cal, sdf, dayOfWeek, parity);
+        return parity;
     }
 
-    private void scheduleSwitch(long chatId, Calendar cal, SimpleDateFormat sdf, String dayOfWeek, String parity) {
+    private void scheduleSwitch(long chatId, String dayOfWeek) {
         switch (dayOfWeek) {
             case "понеділок" ->
-                    parityOfWeek(chatId, "Сьогодні - " + dayOfWeek + "\n\n" + sdf.format(cal.getTime()) + "\n\n" + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n" +
-                            "Пара 5 - \n\n", "Сьогодні - " + dayOfWeek + "\n\n" + " " + sdf.format(cal.getTime()) + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n" +
-                            "Пара 5 - \n\n");
+                    parityOfWeek(chatId, TextUtils.GREETING_DAY_IN_SCHEDULE +
+                                    TextUtils.MONDAY_ODD,
+                            TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.MONDAY_PAIR);
             case "вівторок" ->
-                    parityOfWeek(chatId, "Сьогодні - " + dayOfWeek + "\n\n" + sdf.format(cal.getTime()) + "\n\n" + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n" +
-                            "Пара 5 - \n\n", "Сьогодні - " + dayOfWeek + "\n\n" + " " + sdf.format(cal.getTime()) + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n" +
-                            "Пара 5 - \n\n");
+                    parityOfWeek(chatId,TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.TUESDAY_ODD,
+                            TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.TUESDAY_PAIR);
             case "середа" ->
-                    parityOfWeek(chatId, "Сьогодні - " + dayOfWeek + "\n\n" + sdf.format(cal.getTime()) + "\n\n" + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 1 - \n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n", "Сьогодні - " + dayOfWeek + "\n\n" + " " + sdf.format(cal.getTime()) + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 1 - \n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n" +
-                            "Пара 4 - \n\n");
+                    parityOfWeek(chatId,TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.WEDNESDAY_ODD,
+                            TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.WEDNESDAY_PAIR);
             case "четвер" ->
-                    parityOfWeek(chatId, "Сьогодні - " + dayOfWeek + "\n\n" + sdf.format(cal.getTime()) + "\n\n" + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 1 - \n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n", "Сьогодні - " + dayOfWeek + "\n\n" + " " + sdf.format(cal.getTime()) + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 1 - \n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n");
-            case "пятниця" -> parityOfWeek(chatId,
-                    "Сьогодні - " + dayOfWeek + "\n\n" + sdf.format(cal.getTime()) + "\n\n" + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 1 - \n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n",
-                    "Сьогодні - " + dayOfWeek + "\n\n" + " " + sdf.format(cal.getTime()) + "Тиждень - " + parity +"\n\n"+
-                            "Розклад:\n\n" +
-                            "Пара 2 - \n\n" +
-                            "Пара 3 - \n\n");
-            default -> sendMessage(chatId, "Сьогодні вихідний");
+                    parityOfWeek(chatId,TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.THURSDAY_ODD,
+                            TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.THURSDAY_PAIR);
+            case "пятниця" ->
+                    parityOfWeek(chatId,TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.FRIDAY_ODD,
+                            TextUtils.GREETING_DAY_IN_SCHEDULE+
+                                    TextUtils.FRIDAY_PAIR);
+            default ->
+                    sendMessage(chatId, TextUtils.HOLIDAY);
         }
     }
 
     private void parityOfWeek(long chatId, String dayOfWeekOdd, String dayOfWeekPair) {
         if(!weekOfYear()){
-            sendMessage(chatId,
-                    dayOfWeekOdd);
+            sendMessage(chatId, dayOfWeekOdd);
         }else{
-            sendMessage(chatId,
-                    dayOfWeekPair);
+            sendMessage(chatId, dayOfWeekPair);
         }
     }
 
 
-    private boolean weekOfYear(){
+    private static boolean weekOfYear(){
         Calendar cal = Calendar.getInstance();
         int weekOfYear = cal.get(Calendar.WEEK_OF_YEAR);
         return weekOfYear % 2 == 0;
@@ -190,6 +195,22 @@ public class TelegramBot extends TelegramLongPollingBot {
         SendMessage message = new SendMessage();
         message.setChatId(chatId);
         message.setText(textToSend);
+
+//        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+//        List<KeyboardRow> keyboardRows = new ArrayList<>();
+//        KeyboardRow row = new KeyboardRow();
+//
+//        row.add("/start");
+//        row.add("/help");
+//        row.add("/schedule");
+//        row.add("/weekSchedule");
+//        row.add("/examsSchedule");
+//
+//        keyboardRows.add(row);
+//
+//        replyKeyboardMarkup.setKeyboard(keyboardRows);
+//        message.setReplyMarkup(replyKeyboardMarkup);
+
         try {
             execute(message);
         }catch (TelegramApiException e){
@@ -197,17 +218,17 @@ public class TelegramBot extends TelegramLongPollingBot {
         }
     }
 
-    private void sendPhoto(long chatId, String imageCaption, String imagePath) {
-        try {
-            SendPhoto sendPhoto = new SendPhoto().setPhoto(imagePath);
-            sendPhoto.setChatId(chatId);
-            sendPhoto.setCaption(imageCaption);
-            execute(sendPhoto);
-        } catch (FileNotFoundException | TelegramApiException e) {
-            throw new RuntimeException(e);
-        }
-
-    }
+//    private void sendPhoto(long chatId, String imageCaption, String imagePath) {
+//        try {
+//            SendPhoto sendPhoto = new SendPhoto().setPhoto(imagePath);
+//            sendPhoto.setChatId(chatId);
+//            sendPhoto.setCaption(imageCaption);
+//            execute(sendPhoto);
+//        } catch (FileNotFoundException | TelegramApiException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//    }
 
     private void prepareAndSendMessage(long chatId){
         SendMessage message = new SendMessage();
