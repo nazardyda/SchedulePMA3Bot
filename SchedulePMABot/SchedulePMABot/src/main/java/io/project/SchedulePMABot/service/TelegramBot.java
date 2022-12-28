@@ -5,16 +5,12 @@ import io.project.SchedulePMABot.utils.TextUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
-import org.telegram.telegrambots.meta.api.methods.commands.GetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
-import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
 
 import java.text.Format;
 import java.text.SimpleDateFormat;
@@ -39,9 +35,9 @@ public class TelegramBot extends TelegramLongPollingBot {
 
                     /schedule - підкаже розклад парів на сьогодні
 
-                    /weekSchedule - підкаже розклад парів на тиждень
+                    /week_schedule - підкаже розклад парів на тиждень
 
-                    /examsSchedule - підкаже розклад екзаменів
+                    /exams_schedule - підкаже розклад екзаменів
 
                     /help - допоможе тобі розібратися з командами
 
@@ -88,9 +84,9 @@ public class TelegramBot extends TelegramLongPollingBot {
                     prepareAndSendMessage(chatId);
                 case "/schedule"->
                     scheduleToday(chatId);
-                case "/weekSchedule"->
+                case "/week_schedule"->
                     weekSchedule(chatId);
-                case "/examsSchedule"->
+                case "/exams_schedule"->
                     examsSchedule(chatId);
                     default->
                     sendMessage(chatId, "Команда не підтримується, напиши щось нормальне");
