@@ -1,17 +1,22 @@
 package io.project.SchedulePMABot.service;
 
 import io.project.SchedulePMABot.config.BotConfig;
+import io.project.SchedulePMABot.model.User;
+import io.project.SchedulePMABot.model.UserRepository;
 import io.project.SchedulePMABot.utils.TextUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.commands.SetMyCommands;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.commands.BotCommand;
 import org.telegram.telegrambots.meta.api.objects.commands.scope.BotCommandScopeDefault;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.sql.Timestamp;
 import java.text.Format;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -23,6 +28,8 @@ import java.util.List;
 @Component
 public class TelegramBot extends TelegramLongPollingBot {
 
+    @Autowired
+    private UserRepository userRepository;
     private final BotConfig config;
     private static final String ERROR_TEXT = "Error occurred: ";
     private static final String HELP_TEXT =
@@ -78,8 +85,10 @@ public class TelegramBot extends TelegramLongPollingBot {
             chatId = update.getMessage().getChatId();
 
             switch (messageText){
-                case "/start" ->
+                case "/start" -> {
+                    registerUser(update.getMessage());
                     startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
+                }
                 case "/help"->
                     prepareAndSendMessage(chatId);
                 case "/schedule"->
@@ -95,7 +104,29 @@ public class TelegramBot extends TelegramLongPollingBot {
 
     }
 
+    private void registerUser(Message message) {
+        if(userRepository.findById(message.getChatId()).isEmpty()){
+            var chatId  = message.getChatId();
+            var chat = message.getChat();
+
+            User user = new User();
+
+            user.setChatId(chatId);
+            user.setFirstName(chat.getFirstName());
+            user.setLastName(chat.getLastName());
+            user.setRegisteredAt(new Timestamp(System.currentTimeMillis()));
+
+            userRepository.save(user);
+            log.info("User saved:" + user);
+        }
+    }
+
     private void examsSchedule(long chatId) {
+       // examMessage(chatId);
+        sendMessage(chatId,TextUtils.EXAM_SCHEDULE);
+    }
+
+//    private void examMessage(long chatId) {
 //        switch (TextUtils.getSimpleDateFormat().toString()){
 //            case "2-12-2022" ->
 //                    sendMessage(chatId,TextUtils.FIRST_EXAM);
@@ -108,8 +139,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 //            default ->
 //                    sendMessage(chatId,TextUtils.HOLIDAY);
 //        }
-        sendMessage(chatId,TextUtils.EXAM_SCHEDULE);
-    }
+//    }
 
     private void weekSchedule(long chatId) {
         if (!weekOfYear()){
@@ -192,6 +222,16 @@ public class TelegramBot extends TelegramLongPollingBot {
         message.setChatId(chatId);
         message.setText(textToSend);
 
+       // keyboardMessage(message);
+
+        try {
+            execute(message);
+        }catch (TelegramApiException e){
+            log.error(ERROR_TEXT+e.getMessage());
+        }
+    }
+
+//    private static void keyboardMessage(SendMessage message) {
 //        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
 //        List<KeyboardRow> keyboardRows = new ArrayList<>();
 //        KeyboardRow row = new KeyboardRow();
@@ -206,13 +246,7 @@ public class TelegramBot extends TelegramLongPollingBot {
 //
 //        replyKeyboardMarkup.setKeyboard(keyboardRows);
 //        message.setReplyMarkup(replyKeyboardMarkup);
-
-        try {
-            execute(message);
-        }catch (TelegramApiException e){
-            log.error(ERROR_TEXT+e.getMessage());
-        }
-    }
+//    }
 
 //    private void sendPhoto(long chatId, String imageCaption, String imagePath) {
 //        try {
